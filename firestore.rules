@@ -1,0 +1,211 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTask(data, userId) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.userId == userId &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 200 &&
+             data.description is string &&
+             data.description.size() <= 1000 &&
+             data.category is string &&
+             data.category.size() >= 1 &&
+             data.category.size() <= 40 &&
+             data.priority is string &&
+             data.priority in ['Low', 'Medium', 'High'] &&
+             data.dueDateEpochDay is int &&
+             data.dueDateEpochDay >= 0 &&
+             data.dueTime is string &&
+             data.dueTime.size() <= 20 &&
+             data.hasReminder is bool &&
+             data.isCompleted is bool &&
+             data.completedAtEpochMillis is int &&
+             data.completedAtEpochMillis >= 0 &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidHabit(data, userId) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.userId == userId &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 120 &&
+             data.description is string &&
+             data.description.size() <= 500 &&
+             data.color is string &&
+             data.color in ['Lavender', 'Pink', 'Mint', 'Butter', 'Sky', 'Peach'] &&
+             data.iconName is string &&
+             data.iconName.size() >= 1 &&
+             data.iconName.size() <= 40 &&
+             data.isActive is bool &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidHabitLog(data, userId, logId) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.userId == userId &&
+             data.habitId is string &&
+             isValidId(data.habitId) &&
+             data.completedOn is string &&
+             data.completedOn.size() == 10 &&
+             data.completedOn.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+             logId == data.habitId + '_' + data.completedOn &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time;
+    }
+
+    match /users/{userId}/tasks/{taskId} {
+      allow get: if isSignedIn() &&
+                    request.auth.uid == userId &&
+                    isValidId(userId) &&
+                    isValidId(taskId) &&
+                    existing().userId == request.auth.uid;
+
+      allow list: if isSignedIn() &&
+                     request.auth.uid == userId &&
+                     existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       isValidId(taskId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'title', 'description', 'category', 'priority',
+                         'dueDateEpochDay', 'dueTime', 'hasReminder', 'isCompleted',
+                         'completedAtEpochMillis', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'title', 'description', 'category', 'priority',
+                         'dueDateEpochDay', 'dueTime', 'hasReminder', 'isCompleted',
+                         'completedAtEpochMillis', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidTask(incoming(), userId);
+
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       isValidId(taskId) &&
+                       isValidTask(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'title', 'description', 'category', 'priority',
+                         'dueDateEpochDay', 'dueTime', 'hasReminder', 'isCompleted',
+                         'completedAtEpochMillis', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       isValidId(taskId) &&
+                       existing().userId == request.auth.uid;
+    }
+
+    match /users/{userId}/habits/{habitId} {
+      allow get: if isSignedIn() &&
+                    request.auth.uid == userId &&
+                    isValidId(userId) &&
+                    isValidId(habitId) &&
+                    existing().userId == request.auth.uid;
+
+      allow list: if isSignedIn() &&
+                     request.auth.uid == userId &&
+                     existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       isValidId(habitId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'title', 'description', 'color',
+                         'iconName', 'isActive', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'title', 'description', 'color',
+                         'iconName', 'isActive', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidHabit(incoming(), userId);
+
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       isValidId(habitId) &&
+                       isValidHabit(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'title', 'description', 'color', 'iconName', 'isActive', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       isValidId(habitId) &&
+                       existing().userId == request.auth.uid;
+    }
+
+    match /users/{userId}/habit_logs/{logId} {
+      allow get: if isSignedIn() &&
+                    request.auth.uid == userId &&
+                    isValidId(userId) &&
+                    isValidId(logId) &&
+                    existing().userId == request.auth.uid;
+
+      allow list: if isSignedIn() &&
+                     request.auth.uid == userId &&
+                     existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       isValidId(logId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'habitId', 'completedOn', 'createdAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'habitId', 'completedOn', 'createdAt'
+                       ]) &&
+                       isValidHabitLog(incoming(), userId, logId);
+
+      allow update: if false;
+
+      allow delete: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       isValidId(logId) &&
+                       existing().userId == request.auth.uid;
+    }
+  }
+}

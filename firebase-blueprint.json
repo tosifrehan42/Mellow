@@ -1,0 +1,167 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A user todo task with priority, category, optional due date/time, reminder, and completion state.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID matching request.auth.uid"
+        },
+        "title": {
+          "type": "string",
+          "description": "Task title (1 to 200 chars)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional task notes (0 to 1000 chars)"
+        },
+        "category": {
+          "type": "string",
+          "description": "Task category label (Personal, Study, Work, Health, Other, or custom category up to 40 chars)"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["Low", "Medium", "High"],
+          "description": "Task priority level"
+        },
+        "dueDateEpochDay": {
+          "type": "integer",
+          "description": "Epoch day (LocalDate.toEpochDay) or 0 if no due date"
+        },
+        "dueTime": {
+          "type": "string",
+          "description": "Optional formatted time HH:mm or empty string"
+        },
+        "hasReminder": {
+          "type": "boolean",
+          "description": "Whether local notification reminder is enabled"
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Completion state"
+        },
+        "completedAtEpochMillis": {
+          "type": "integer",
+          "description": "Completion timestamp in epoch millis or 0 when incomplete"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created (FieldValue.serverTimestamp())"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated (FieldValue.serverTimestamp())"
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "description",
+        "category",
+        "priority",
+        "dueDateEpochDay",
+        "dueTime",
+        "hasReminder",
+        "isCompleted",
+        "completedAtEpochMillis",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Habit": {
+      "title": "Habit",
+      "description": "A daily user habit with pastel color tag, icon name, and active status.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID matching request.auth.uid"
+        },
+        "title": {
+          "type": "string",
+          "description": "Habit title (1 to 120 chars)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Habit description or cue (0 to 500 chars)"
+        },
+        "color": {
+          "type": "string",
+          "enum": ["Lavender", "Pink", "Mint", "Butter", "Sky", "Peach"],
+          "description": "Pastel card color key"
+        },
+        "iconName": {
+          "type": "string",
+          "description": "Icon identifier for habit card"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether the habit is currently active"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created (FieldValue.serverTimestamp())"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated (FieldValue.serverTimestamp())"
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "description",
+        "color",
+        "iconName",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "HabitLog": {
+      "title": "HabitLog",
+      "description": "A record of a habit completed on a specific YYYY-MM-DD date.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID matching request.auth.uid"
+        },
+        "habitId": {
+          "type": "string",
+          "description": "Referenced habit ID"
+        },
+        "completedOn": {
+          "type": "string",
+          "description": "Completion date in YYYY-MM-DD format"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when logged (FieldValue.serverTimestamp())"
+        }
+      },
+      "required": ["userId", "habitId", "completedOn", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Per-user tasks collection"
+    },
+    "/users/{userId}/habits/{habitId}": {
+      "schema": { "$ref": "#/entities/Habit" },
+      "description": "Per-user daily habits collection"
+    },
+    "/users/{userId}/habit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/HabitLog" },
+      "description": "Per-user daily habit completion logs keyed by habitId_YYYY-MM-DD"
+    }
+  }
+}
